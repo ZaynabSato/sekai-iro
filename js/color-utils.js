@@ -37,6 +37,26 @@
     else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
     return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
   }
+  /** 色相環ピッカー用。@returns {[number, number, number]} h:0-360, s:0-1, v:0-1 (グレーのhは0) */
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h = 0;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    return [h, max === 0 ? 0 : d / max, max];
+  }
+  /** @returns {[number, number, number]} r,g,b: 0-255 */
+  function hsvToRgb(h, s, v) {
+    h = ((h % 360) + 360) % 360;
+    var c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+  }
   /** 単純変換によるCMYK(%)。印刷用の正確な値ではなく目安。 */
   function rgbToCmyk(r, g, b) {
     r /= 255; g /= 255; b /= 255;
@@ -158,7 +178,7 @@
 
   return {
     HEX_RE: HEX_RE, hexToRgb: hexToRgb, rgbToHex: rgbToHex, rgbToHsl: rgbToHsl, hslToRgb: hslToRgb,
-    rgbToCmyk: rgbToCmyk, rgbToLab: rgbToLab, deltaE: deltaE, luminance: luminance, contrast: contrast,
+    rgbToHsv: rgbToHsv, hsvToRgb: hsvToRgb, rgbToCmyk: rgbToCmyk, rgbToLab: rgbToLab, deltaE: deltaE, luminance: luminance, contrast: contrast,
     readableText: readableText, classify: classify, normalize: normalize, nameKey: nameKey, slug: slug
   };
 });

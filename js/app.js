@@ -557,6 +557,77 @@
     img.onerror = () => { URL.revokeObjectURL(url); toast('画像にできませんでした'); };
     img.src = url;
   }
+  /* 色相環ピッカー: 外側の輪=色相、内側の四角=鮮やかさ(横)×明るさ(縦)。座標は輪の外接正方形を0〜1とする。 */
+  const WH = { sq0: 0.24, sq1: 0.76, ringMid: 0.445, hueFrom: 0.37, hueTo: 0.56 };
+  function initWheel(hexIn) {
+    const root = $('#ty-wheel'), hk = $('#wh-hue'), sk = $('#wh-sv'), sw = $('#ty-swatch'), rd = $('#ty-wh-read');
+    const st = { h: 0, s: 1, v: 1 };
+    const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+    const hexNow = () => { const c = CU.hsvToRgb(st.h, st.s, st.v); return CU.rgbToHex(c[0], c[1], c[2]); };
+    function paint(syncHex) {
+      const hex = hexNow(), a = st.h * Math.PI / 180, size = WH.sq1 - WH.sq0;
+      root.style.setProperty('--h', st.h.toFixed(1));
+      root.style.setProperty('--k', hex);
+      hk.style.left = (50 + WH.ringMid * 100 * Math.sin(a)).toFixed(2) + '%';
+      hk.style.top = (50 - WH.ringMid * 100 * Math.cos(a)).toFixed(2) + '%';
+      sk.style.left = ((WH.sq0 + st.s * size) * 100).toFixed(2) + '%';
+      sk.style.top = ((WH.sq0 + (1 - st.v) * size) * 100).toFixed(2) + '%';
+      sw.style.background = hex;
+      const H = Math.round(st.h) % 360, S = Math.round(st.s * 100), V = Math.round(st.v * 100);
+      rd.textContent = '色相 ' + H + '° ・ 鮮やかさ ' + S + '% ・ 明るさ ' + V + '%';
+      hk.setAttribute('aria-valuenow', H); hk.setAttribute('aria-valuetext', '色相 ' + H + '度');
+      sk.setAttribute('aria-valuenow', S); sk.setAttribute('aria-valuetext', '鮮やかさ ' + S + '%、明るさ ' + V + '%');
+      if (syncHex) { hexIn.value = hex; hexIn.removeAttribute('aria-invalid'); }
+    }
+    function setHex(hex) {
+      const c = CU.hexToRgb(hex), t = CU.rgbToHsv(c[0], c[1], c[2]);
+      if (t[1] > 0 && t[2] > 0) st.h = t[0]; // 灰色・黒は色相が決まらないので、今の色相を保つ
+      st.s = t[1]; st.v = t[2]; paint(false);
+    }
+    const pos = (e) => { const r = root.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; };
+    const drive = (mode, p) => {
+      if (mode === 'hue') st.h = (Math.atan2(p.x - 0.5, 0.5 - p.y) * 180 / Math.PI + 360) % 360;
+      else { st.s = clamp((p.x - WH.sq0) / (WH.sq1 - WH.sq0), 0, 1); st.v = 1 - clamp((p.y - WH.sq0) / (WH.sq1 - WH.sq0), 0, 1); }
+      paint(true);
+    };
+    let mode = null;
+    root.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      const p = pos(e), d = Math.hypot(p.x - 0.5, p.y - 0.5);
+      mode = d < WH.hueFrom ? 'sv' : (d <= WH.hueTo ? 'hue' : null);
+      if (!mode) return;
+      e.preventDefault(); try { root.setPointerCapture(e.pointerId); } catch (err) { /* 合成イベントなど */ }
+      (mode === 'hue' ? hk : sk).focus({ preventScroll: true });
+      drive(mode, p);
+    });
+    root.addEventListener('pointermove', (e) => { if (mode) { e.preventDefault(); drive(mode, pos(e)); } });
+    const end = () => { mode = null; };
+    root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end); root.addEventListener('lostpointercapture', end);
+    // キーボード: 輪のつまみ=色相、四角のつまみ=鮮やかさ(←→)と明るさ(↑↓)。Shift/PageUpDownで大きく動かす
+    hk.addEventListener('keydown', (e) => {
+      const big = e.shiftKey || e.key === 'PageUp' || e.key === 'PageDown', step = big ? 10 : 1;
+      let h = st.h;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'PageUp') h += step;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'PageDown') h -= step;
+      else if (e.key === 'Home') h = 0; else if (e.key === 'End') h = 359;
+      else return;
+      e.preventDefault(); st.h = (h + 360) % 360; paint(true);
+    });
+    sk.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 0.1 : 0.01;
+      let s = st.s, v = st.v;
+      if (e.key === 'ArrowRight') s += step; else if (e.key === 'ArrowLeft') s -= step;
+      else if (e.key === 'ArrowUp') v += step; else if (e.key === 'ArrowDown') v -= step;
+      else if (e.key === 'PageUp') v += 0.1; else if (e.key === 'PageDown') v -= 0.1;
+      else return;
+      e.preventDefault(); st.s = clamp(s, 0, 1); st.v = clamp(v, 0, 1); paint(true);
+    });
+    // HEXの直接入力 → 環に反映(正しい形になったときだけ)
+    hexIn.addEventListener('input', () => { const n = normHex(hexIn.value); if (n) { hexIn.removeAttribute('aria-invalid'); setHex(n); } });
+    hexIn.addEventListener('change', () => { if (!normHex(hexIn.value)) hexIn.setAttribute('aria-invalid', 'true'); });
+    setHex(normHex(hexIn.value) || '#C73E3A'); paint(true);
+    return { set: setHex, hex: hexNow };
+  }
   function initTryon() {
     if (!CONFIG.fileSave) $('#ty-png').hidden = true;
     $('#ty-tpls').addEventListener('click', (e) => { const b = e.target.closest('[data-tpl]'); if (b) { ty.tpl = b.dataset.tpl; tyRefresh(); } });
@@ -579,15 +650,17 @@
       if (ty.brush && ty.sel) tyPaint(ty.sel, ty.brush);
       tyRefresh();
     });
-    const colorIn = $('#ty-color'), hexIn = $('#ty-hex');
-    colorIn.addEventListener('input', () => { hexIn.value = colorIn.value.toUpperCase(); });
-    hexIn.addEventListener('input', () => { const n = normHex(hexIn.value); if (n) colorIn.value = n.toLowerCase(); });
-    $('#ty-addbtn').addEventListener('click', () => {
-      const n = normHex(hexIn.value); if (!n) { toast('HEXは #RRGGBB の形で入力してください'); return; }
+    const hexIn = $('#ty-hex');
+    const wheel = initWheel(hexIn);
+    const addColor = () => {
+      const n = normHex(hexIn.value); if (!n) { hexIn.setAttribute('aria-invalid', 'true'); toast('HEXは #RRGGBB の形で入力してください'); return; }
+      wheel.set(n);
       if (ty.pal.length >= 8) { toast('色は8色までです'); return; }
       const base = ty.pal.map((p) => ({ hex: p.hex, w: p.w, name: p.name, id: p.id })); const keepOver = ty.over, keepSel = ty.sel;
       tyCustom(base.concat([{ hex: n, w: 1, name: '', id: '' }])); ty.over = keepOver; ty.sel = keepSel; ty.brush = n; if (ty.sel) tyPaint(ty.sel, n); tyRefresh();
-    });
+    };
+    $('#ty-addbtn').addEventListener('click', addColor);
+    hexIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addColor(); } });
     const pick = (id) => { if (id) tySelect(id); };
     $('#ty-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) pick(b.dataset.slot); });
     $('#ty-stage').addEventListener('click', (e) => { const g = e.target.closest('[data-slot]'); if (g) pick(g.dataset.slot); });

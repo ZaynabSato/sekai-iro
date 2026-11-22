@@ -134,10 +134,19 @@
             <button type="button" class="btn" id="ty-random">ランダム</button>
           </div>
           <div class="ty-pal" id="ty-pal" aria-label="使う色"></div>
-          <div class="ty-add">
-            <input type="color" id="ty-color" value="#c73e3a" aria-label="足す色を選ぶ">
-            <input type="text" id="ty-hex" value="#C73E3A" maxlength="7" spellcheck="false" autocomplete="off" aria-label="足す色のHEX">
-            <button type="button" class="btn" id="ty-addbtn">色を足す</button>
+          <div class="ty-add" role="group" aria-label="色相環で色を足す">
+            <div class="wheel" id="ty-wheel">
+              <div class="wh-ring" aria-hidden="true"></div>
+              <div class="wh-sv" aria-hidden="true"></div>
+              <span class="wh-knob wh-hk" id="wh-hue" tabindex="0" role="slider" aria-label="色相(色相環の輪)" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"></span>
+              <span class="wh-knob wh-sk" id="wh-sv" tabindex="0" role="slider" aria-label="鮮やかさと明るさ(四角)" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span>
+            </div>
+            <div class="ty-add-side">
+              <div class="wh-prev"><i id="ty-swatch" aria-hidden="true"></i><span id="ty-wh-read" aria-live="off"></span></div>
+              <label class="wh-hex"><span>HEX</span><input type="text" id="ty-hex" value="#C73E3A" maxlength="7" spellcheck="false" autocomplete="off" aria-label="足す色のHEX"></label>
+              <button type="button" class="btn" id="ty-addbtn">色を足す</button>
+              <p class="wh-hint">外側の輪で色相、内側の四角で鮮やかさ(右ほど鮮やか)と明るさ(上ほど明るい)を選びます。矢印キーでも動かせます。</p>
+            </div>
           </div>
         </section>
         <section class="ty-box">
