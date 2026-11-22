@@ -5,7 +5,7 @@ const path = require('path');
 const vm = require('vm');
 const CU = require('../js/color-utils.js');
 
-const REGIONS = ['jp', 'eu', 'cn', 'in', 'ir'];
+const REGIONS = ['jp', 'eu', 'cn', 'in', 'ir', 'naf', 'waf', 'eaf', 'saf', 'mes', 'and', 'nam', 'tro'];
 const TAGS = new Set('fmdantgc'.split(''));
 const sandbox = { window: {} };
 vm.createContext(sandbox);
@@ -75,7 +75,8 @@ console.log('      ' + Object.keys(FAM).map((k) => FAM[k].padStart(3)).join(' ')
 for (const r of REGIONS) console.log(`  ${r}  ` + Object.keys(FAM).map((k) => String(dist[r][k] || 0).padStart(3)).join(' '));
 
 console.log('\n== 系統判定の目視用サンプル (名前の印象と合っているか) ==');
-const probe = ['桜色', '紅', '朱色', '茶色', '鼠色', '月白', '象牙色', '山吹色', '藍色', 'ウルトラマリン', 'ティリアンパープル', 'セピア', 'केसरी', 'فیروزه‌ای', '朱砂', '黛', '漢白玉', '琥珀', '蘇芳'];
+const probe = ['桜色', '紅', '朱色', '茶色', '鼠色', '月白', '象牙色', '山吹色', '藍色', 'ウルトラマリン', 'ティリアンパープル', 'セピア', 'केसरी', 'فیروزه‌ای', '朱砂', '黛', '漢白玉', '琥珀', '蘇芳',
+  'أزرق شفشاون', 'زعفران', 'Kente', 'Bògòlanfini', 'Shanga nyekundu', 'Otjize', 'Rosa mexicano', 'Nocheztli', 'Mullu', 'Sleeping Beauty Turquoise', 'Bayeta Red', 'Urucum', 'Oxum'];
 for (const r of REGIONS) for (const c of SEKAI[r]) {
   if (probe.includes(c[0]) || probe.includes(c[0].replace(/‌/g, '‌'))) console.log(`  ${r} ${c[0]} ${c[3]} → ${FAM[CU.classify(c[3])]}系`);
 }

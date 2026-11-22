@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>世界伝統色辞典</title>
-<meta name="description" content="日本・欧州の伝統色に、中国・インド・ペルシャの色を加えた500色超の辞典。色名の由来、文化をまたいだ近い色、配色の提案、マイパレットを備えます。">
+<meta name="description" content="日本・欧州・中国・インド・ペルシャに、アフリカと南北アメリカを加えた、世界13の文化・1000色超の伝統色辞典。色名の由来、文化をまたいだ近い色、配色の提案、マイパレットを備えます。">
 <meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,9 +45,9 @@
 
 <main>
   <section class="hero">
-    <p class="eyebrow">日本 + 欧州 + 中国 + インド + ペルシャ</p>
+    <p class="eyebrow">アジア + 欧州 + アフリカ + アメリカ</p>
     <h1>世界の伝統色を、<br class="br-sm">文化をまたいで引く。</h1>
-    <p class="lead">日本と欧州の伝統色に、中国・インド・ペルシャの色を加えた <strong id="total">0</strong> 色の辞典です。色名の由来を読み、ある色が別の文化では何と呼ばれてきたかも探せます。</p>
+    <p class="lead">日本と欧州に始まり、中国・インド・ペルシャ、アフリカ、南北アメリカへ。<strong id="n-regions">13</strong> の文化、<strong id="total">0</strong> 色の辞典です。色名の由来を読み、ある色が別の文化では何と呼ばれてきたかも探せます。</p>
     <div class="regions" id="regions" role="group" aria-label="地域で絞り込む"></div>
   </section>
 
@@ -77,17 +77,23 @@
     <div class="chip-row"><span class="chip-label">テーマ</span><div class="chips" id="tag-chips"></div></div>
   </section>
 
+  <section id="rg-intro" class="rg-intro" aria-label="選んだ地域の紹介" hidden></section>
+
   <div class="result-bar">
     <p id="count" aria-live="polite"></p>
     <button type="button" class="link" id="reset" hidden>条件をリセット</button>
   </div>
 
   <ul class="grid" id="grid"></ul>
+  <div id="more-wrap" class="more-wrap" hidden>
+    <button type="button" class="btn" id="more">さらに表示<span class="more-rest">(残り <b id="more-n">0</b> 色)</span></button>
+  </div>
 
   <div id="map-wrap" class="map-wrap" hidden>
     <canvas id="map" aria-label="色の分布図。横軸は色相、縦軸は明るさ。"></canvas>
     <div id="map-tip" class="map-tip" role="tooltip" hidden></div>
-    <p class="map-note">横軸=色相、縦軸=明るさ。左端の帯は無彩色。「すべて」を選ぶと、輪郭の色が地域を表します。点を押すと詳細を開きます。</p>
+    <ul id="map-legend" class="map-legend" aria-label="凡例(輪郭の色と地域)"></ul>
+    <p class="map-note">横軸=色相、縦軸=明るさ。左端の帯は無彩色。複数の地域を表示しているときは、輪郭の色が地域を表します。点を押すと詳細を開きます。</p>
   </div>
 
   <div id="empty" class="empty" hidden>
@@ -99,7 +105,8 @@
 
 <footer class="foot">
   <p>HEX値は代表的な近似値です。染料・顔料・資料によって色味は異なります。系統の分類とCMYKは計算による目安です。</p>
-  <p>色名・読み・解説は独自に編集したものです。構成は <a href="https://www.i-iro.com/dic/" target="_blank" rel="noopener noreferrer">色彩図鑑</a> に着想を得ています。</p>
+  <p>色名・読み・解説は独自に編集したものです。各地域の色は代表的な例で、同じ地域の中でも言語や共同体によって呼び方や意味が異なります。特に先住民族の色の意味は、一般に紹介されている範囲にとどめています。</p>
+  <p>構成は <a href="https://www.i-iro.com/dic/" target="_blank" rel="noopener noreferrer">色彩図鑑</a> に着想を得ています。</p>
 </footer>
 
 <!-- 色の詳細 -->
@@ -113,7 +120,7 @@
       <button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button>
     </div>
     <div class="dlg-body">
-      <p class="dlg-lead">好きな色を選ぶと、五つの文化それぞれで最も近い伝統色を表示します。</p>
+      <p class="dlg-lead" id="f-lead">好きな色を選ぶと、それぞれの文化で最も近い伝統色を表示します。</p>
       <div class="f-input">
         <input type="color" id="f-color" value="#c73e3a" aria-label="色を選ぶ">
         <input type="text" id="f-hex" value="#C73E3A" maxlength="7" spellcheck="false" autocomplete="off" aria-label="HEXで指定" placeholder="#RRGGBB">
@@ -146,6 +153,14 @@
 <script src="js/data/cn.js"></script>
 <script src="js/data/in.js"></script>
 <script src="js/data/ir.js"></script>
+<script src="js/data/naf.js"></script>
+<script src="js/data/waf.js"></script>
+<script src="js/data/eaf.js"></script>
+<script src="js/data/saf.js"></script>
+<script src="js/data/mes.js"></script>
+<script src="js/data/and.js"></script>
+<script src="js/data/nam.js"></script>
+<script src="js/data/tro.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

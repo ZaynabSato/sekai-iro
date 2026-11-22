@@ -106,7 +106,10 @@
     if (L < 12) return 'mono';
     if (C < 9 && !(pinkish && L > 88 && C >= 4.5)) return 'mono';
     if (L > 88 && C < 14 && !pinkish) return 'mono';
-    if (h >= 300 && h < 345) { if (L >= 50) return 'pink'; return h < 330 ? 'purple' : 'red'; }
+    if (h >= 300 && h < 345) {
+      if (L >= 50 || (h >= 320 && h < 332 && C >= 60)) return 'pink'; // 彩度の高いマゼンタは、明度が低めでも桃とみなす
+      return h < 330 ? 'purple' : 'red';
+    }
     if (h >= 345 || h < 15) {
       if (L >= 72) return 'pink';
       if (h < 15 && h >= 8 && L < 42) return 'brown';

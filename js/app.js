@@ -12,12 +12,39 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
   /* ───────── 定義 ───────── */
+  // 地域は三つのまとまり(GROUPS)に分けて並べる。地域を足すときは、ここと js/data/<id>.js と index.html の script を揃える。
+  const GROUPS = [
+    { id: 'eurasia', label: 'アジア・欧州', en: 'Asia & Europe', desc: '日本と欧州に、中国・インド・ペルシャを加えた五つの文化です。' },
+    { id: 'africa', label: 'アフリカ', en: 'Africa', desc: 'アフリカは、四つに分けました。北(アラビア語圏と古代エジプト)、西(染めと布)、東(サバンナとインド洋)、中南部(最古の顔料とビーズ)。' },
+    { id: 'americas', label: 'アメリカ', en: 'The Americas', desc: '南北アメリカは、感性の異なる四つの系統を選びました。メソアメリカ、アンデス、北米先住民、熱帯アメリカ(アマゾン・ブラジル・カリブ)。' }
+  ];
   const REGIONS = [
-    { id: 'jp', label: '日本', en: 'Japan', lang: 'ja', color: '#c13b48', isNew: false, kanaLabel: '読み', romanLabel: 'ローマ字' },
-    { id: 'eu', label: '欧州', en: 'Europe', lang: 'ja', color: '#3b57b5', isNew: false, kanaLabel: '', romanLabel: '原語・英語表記' },
-    { id: 'cn', label: '中国', en: 'China', lang: 'zh-Hant', color: '#d0a02b', isNew: true, kanaLabel: '日本語読み', romanLabel: 'ピンイン' },
-    { id: 'in', label: 'インド', en: 'India', lang: 'hi', color: '#e97f1e', isNew: true, kanaLabel: 'カナ読み', romanLabel: '翻字' },
-    { id: 'ir', label: 'ペルシャ', en: 'Persia', lang: 'fa', dir: 'rtl', color: '#1ea8a1', isNew: true, kanaLabel: 'カナ読み', romanLabel: '翻字' }
+    { id: 'jp', group: 'eurasia', label: '日本', en: 'Japan', sub: 'Japan', lang: 'ja', color: '#c13b48', kanaLabel: '読み', romanLabel: 'ローマ字',
+      script: '漢字・かな', sense: '移ろいを呼び分ける', desc: '植物・季節・染料に由来する名前で、淡い違いまで細かく呼び分けます。襲(かさね)の色目や、江戸の「四十八茶百鼠」のように、わずかな差を楽しむ感性が根にあります。' },
+    { id: 'eu', group: 'eurasia', label: '欧州', en: 'Europe', sub: 'Europe', lang: 'ja', color: '#3b57b5', kanaLabel: '', romanLabel: '原語・英語表記',
+      script: 'カタカナ(原語は右の欄)', sense: '顔料と紋章', desc: 'ラピスラズリやコチニールなどの顔料・染料、宝石、王侯や軍の制服に由来する名前が多く、色が素材と権威の歴史を背負っています。' },
+    { id: 'cn', group: 'eurasia', label: '中国', en: 'China', sub: 'China', lang: 'zh-Hant', color: '#d0a02b', kanaLabel: '日本語読み', romanLabel: 'ピンイン',
+      script: '繁体字', sense: '正色と五行', desc: '五行思想に基づく正色(青・赤・黄・白・黒)を軸に、朱砂・黛・石青などの顔料、玉や絹、漆の色が名前になっています。' },
+    { id: 'in', group: 'eurasia', label: 'インド', en: 'India', sub: 'India', lang: 'hi', color: '#e97f1e', kanaLabel: 'カナ読み', romanLabel: '翻字',
+      script: 'デーヴァナーガリー(ヒンディー語)', sense: '祝祭と香辛料', desc: 'ホーリー祭の色粉、サフランやウコン、婚礼の赤。儀礼と食の色が、彩度の高い名前になっています。' },
+    { id: 'ir', group: 'eurasia', label: 'ペルシャ', en: 'Persia', sub: 'Persia · Iran', lang: 'fa', dir: 'rtl', color: '#1ea8a1', kanaLabel: 'カナ読み', romanLabel: '翻字',
+      script: 'ペルシャ文字(右から左)', sense: 'タイルと庭園', desc: 'トルコ石やラピスラズリの青、バラの庭、細密画の顔料。イスラム建築のタイルの青が、色名の中心にあります。' },
+    { id: 'naf', group: 'africa', label: '北アフリカ', en: 'North Africa', sub: 'エジプト・マグリブ・サハラ', lang: 'ar', dir: 'rtl', color: '#8b5cc2', kanaLabel: 'カナ読み', romanLabel: '翻字',
+      script: 'アラビア文字(右から左)', sense: '石灰・藍・土', desc: '白い壁に青を添える石灰と藍、サハラの砂と夕日、古代エジプトの顔料とスパイス。名前はアラビア語です。' },
+    { id: 'waf', group: 'africa', label: '西アフリカ', en: 'West Africa', sub: 'ガーナ・ナイジェリア・マリ・セネガルほか', lang: 'und', color: '#4c9a3a', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(トゥイ語・ヨルバ語・ハウサ語・フランス語ほか)', sense: '染めと布、金', desc: '藍染め、泥染め、ケンテ。布が色を語り、金とカムウッドの赤が、王権と儀礼を表します。' },
+    { id: 'eaf', group: 'africa', label: '東アフリカ', en: 'East Africa', sub: 'ケニア・タンザニア・エチオピア・マダガスカルほか', lang: 'und', color: '#c4572e', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(スワヒリ語を中心に、アムハラ語・マダガスカル語ほか)', sense: 'サバンナとインド洋', desc: '赤い布と珠飾りの色の暗号、ザンジバルのスパイス、エチオピア高原のコーヒー、火山と塩湖。大地と海の両方から、色が呼ばれます。' },
+    { id: 'saf', group: 'africa', label: '中南部アフリカ', en: 'Central & Southern Africa', sub: '南アフリカ・ナミビア・ボツワナ・コンゴほか', lang: 'und', color: '#a8a82a', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(ズールー語・ツワナ語・アフリカーンス語・フランス語ほか)', sense: '最古の顔料とビーズ', desc: '約10万年前の赤黄土から、ズールーのビーズの色の暗号、ンデベレの壁、塩の湖と砂丘、鉱物の大地まで。' },
+    { id: 'mes', group: 'americas', label: 'メソアメリカ', en: 'Mesoamerica', sub: 'メキシコ・グアテマラ・中米', lang: 'es', color: '#d6389a', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(スペイン語・ナワトル語・マヤ語)', sense: '祝祭と対比', desc: 'コチニールの赤とマリーゴールドの橙、桃色と青の壁、トウモロコシの四つの色。強い色同士をぶつけ合う、祝祭の感性です。' },
+    { id: 'and', group: 'americas', label: 'アンデス', en: 'Andes', sub: 'ペルー・ボリビア・チリ・アルゼンチン', lang: 'es', color: '#2a8fd0', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(ケチュア語・アイマラ語・マプチェ語・スペイン語)', sense: '高地の染織と毛色', desc: 'コチニールで染めた赤と、アルパカの天然の毛色。塩の湖や虹色の山の、鉱物の色。標高の高さが、色を澄ませます。' },
+    { id: 'nam', group: 'americas', label: '北米先住民', en: 'Native North America', sub: '米国・カナダの先住民族', lang: 'en', color: '#8a6a45', kanaLabel: 'カナ読み', romanLabel: '民族・地域',
+      script: '英語(右の欄に民族・地域)', sense: '大地・空・四つの方角', desc: '砂岩の赤、トルコ石の青、貝と染料植物。色が方角や聖なる山と結びつく民族もありますが、意味は民族ごとに異なります。' },
+    { id: 'tro', group: 'americas', label: '熱帯アメリカ', en: 'Tropical Americas', sub: 'ブラジル・アマゾン・カリブ海・コロンビア', lang: 'und', color: '#14a37f', kanaLabel: 'カナ読み', romanLabel: '英語での意味',
+      script: 'ラテン文字(ポルトガル語・スペイン語・トゥピ語ほか)', sense: '果実と密林と港町', desc: 'ジェニパポの青黒とウルクンの赤、黒い川と白い砂丘、果実と葉巻の茶、オリシャの色。熱と湿気をまとった色です。' }
   ];
   const FAMILIES = [
     { id: 'pink', label: '桃系', dot: '#f2a1b8' }, { id: 'red', label: '赤系', dot: '#c8372d' },
@@ -32,6 +59,8 @@
   ];
   const SORT_LABEL = { order: '掲載順', name: '名前順', hue: '色相順', light: '明度順', chroma: '彩度順' };
   const RBY = Object.fromEntries(REGIONS.map((r) => [r.id, r]));
+  const GBY = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
+  const regionLabel = (id) => (RBY[id] ? RBY[id].label : GBY[id] ? GBY[id].label : id);
   const FBY = Object.fromEntries(FAMILIES.map((f) => [f.id, f]));
   const TBY = Object.fromEntries(TAGS.map((t) => [t.id, t]));
   const ICON_HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linejoin="round" d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.7 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.3 0 5.4 3.1 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
@@ -52,13 +81,13 @@
       const lab = CU.rgbToLab(rgb[0], rgb[1], rgb[2]);
       const c = {
         id: r.id + '-' + String(i + 1).padStart(3, '0'),
-        region: r.id, order: ALL.length,
+        region: r.id, group: r.group, order: ALL.length,
         name: a[0], kana: a[1], roman: a[2], hex, note: a[4], tag: a[5],
         rgb, lab, hsl: CU.rgbToHsl(rgb[0], rgb[1], rgb[2]),
         family: CU.classify(hex), text: CU.readableText(rgb),
         chroma: Math.hypot(lab[1], lab[2]),
         sortKey: CU.normalize(a[1] || a[0]),
-        key: CU.normalize([a[0], a[1], a[2], hex, a[4], r.label, r.en, FBY[CU.classify(hex)].label, TBY[a[5]].label].join(' '))
+        key: CU.normalize([a[0], a[1], a[2], hex, a[4], r.label, r.en, GBY[r.group].label, FBY[CU.classify(hex)].label, TBY[a[5]].label].join(' '))
       };
       ALL.push(c); byId[c.id] = c;
     });
@@ -85,11 +114,21 @@
   };
   function nameAttrs(c) { const r = RBY[c.region]; return 'lang="' + r.lang + '"' + (r.dir ? ' dir="' + r.dir + '"' : ''); }
   function matches(c, skip) {
-    if (skip !== 'region' && state.region !== 'all' && c.region !== state.region) return false;
+    if (skip !== 'region' && state.region !== 'all' && c.region !== state.region && c.group !== state.region) return false;
     if (skip !== 'family' && state.family !== 'all' && c.family !== state.family) return false;
     if (skip !== 'tag' && state.tag !== 'all' && c.tag !== state.tag) return false;
     for (let i = 0; i < tokens.length; i++) if (c.key.indexOf(tokens[i]) < 0) return false;
     return true;
+  }
+  // すべての色との色差(CIEDE2000)を近い順に並べる。地域ごとの最近傍は、この結果から拾う(色差の計算は一度だけ)。
+  function rankAll(lab, excludeId) {
+    const arr = [];
+    for (let i = 0; i < ALL.length; i++) {
+      const c = ALL[i];
+      if (c.id !== excludeId) arr.push({ c, d: CU.deltaE(lab, c.lab) });
+    }
+    arr.sort((a, b) => a.d - b.d);
+    return arr;
   }
   function nearestBy(lab, filter, n, excludeId) {
     const arr = [];
@@ -100,6 +139,17 @@
     }
     arr.sort((a, b) => a.d - b.d);
     return arr.slice(0, n);
+  }
+  // 地域ごとの最近傍を、近い順に返す(rank は rankAll の結果)
+  function bestPerRegion(rank, exceptRegion, per) {
+    const got = {}, out = [];
+    for (let i = 0; i < rank.length; i++) {
+      const m = rank[i], r = m.c.region;
+      if (r === exceptRegion) continue;
+      got[r] = (got[r] || 0) + 1;
+      if (got[r] <= per) out.push(m);
+    }
+    return out;
   }
   function closeness(d) {
     if (d < 2) return ['ほぼ同じ', true];
@@ -156,7 +206,7 @@
       const i = kv.indexOf('='); if (i < 0) return;
       const k = kv.slice(0, i); let v = kv.slice(i + 1);
       try { v = decodeURIComponent(v); } catch (e) { return; }
-      if (k === 'r' && (v === 'all' || RBY[v])) state.region = v;
+      if (k === 'r' && (v === 'all' || RBY[v] || GBY[v])) state.region = v;
       else if (k === 'f' && FBY[v]) state.family = v;
       else if (k === 't' && TBY[v]) state.tag = v;
       else if (k === 'q') state.q = v.slice(0, 80);
@@ -169,12 +219,33 @@
   /* ───────── 地域ボタン / チップ ───────── */
   function buildRegions() {
     const strip = (list) => '<span class="rg-strip">' + sampleStrip(list, 6).map((c) => '<i style="background:' + c.hex + '"></i>').join('') + '</span>';
-    const items = [{ id: 'all', label: 'すべて', en: 'All regions', color: '#6b5f52', list: ALL }]
-      .concat(REGIONS.map((r) => Object.assign({}, r, { list: ALL.filter((c) => c.region === r.id) })));
-    $('#regions').innerHTML = items.map((r) =>
-      '<button type="button" class="region" data-region="' + r.id + '" aria-pressed="false" style="--rc:' + r.color + '">' +
-      '<span class="rg-top"><span class="rg-name">' + r.label + '</span>' + (r.isNew ? '<span class="rg-new">追加</span>' : '') + '</span>' +
-      '<span class="rg-en">' + r.en + '</span>' + strip(r.list) + '<span class="rg-count"></span></button>').join('');
+    const card = (r) => '<button type="button" class="region" data-region="' + r.id + '" aria-pressed="false" style="--rc:' + r.color + '">' +
+      '<span class="rg-top"><span class="rg-name">' + r.label + '</span></span>' +
+      '<span class="rg-en">' + esc(r.sub) + '</span>' + strip(ALL.filter((c) => c.region === r.id)) + '<span class="rg-count"></span></button>';
+    $('#regions').innerHTML =
+      '<div class="rg-all"><button type="button" class="region region-all" data-region="all" aria-pressed="false" style="--rc:#6b5f52">' +
+      '<span class="rg-name">すべて</span><span class="rg-en">All regions</span><span class="rg-count"></span></button></div>' +
+      GROUPS.map((g) => '<section class="rg-group" aria-label="' + g.label + '">' +
+        '<div class="rg-head"><button type="button" class="rg-group-btn" data-region="' + g.id + '" aria-pressed="false">' +
+        '<span class="rg-gname">' + g.label + '</span><span class="rg-gen">' + g.en + '</span><span class="rg-count"></span></button></div>' +
+        '<div class="rg-cards">' + REGIONS.filter((r) => r.group === g.id).map(card).join('') + '</div></section>').join('');
+  }
+  // 選んでいる地域(または地域のまとまり)の紹介
+  function renderIntro() {
+    const el = $('#rg-intro'), id = state.region, r = RBY[id], g = GBY[id];
+    if (id === 'all' || (!r && !g)) { el.hidden = true; el.innerHTML = ''; return; }
+    const n = ALL.filter((c) => c.region === id || c.group === id).length;
+    el.style.setProperty('--rc', r ? r.color : '#6b5f52');
+    if (r) {
+      el.innerHTML = '<div class="intro-head"><span class="dot" style="--rc:' + r.color + '"></span><b>' + r.label + '</b><span class="intro-en">' + r.en + '</span><span class="intro-sense">' + r.sense + '</span></div>' +
+        '<p>' + r.desc + '</p><p class="intro-meta">' + n + '色 · 名前の表記: ' + r.script + '</p>';
+    } else {
+      el.innerHTML = '<div class="intro-head"><b>' + g.label + '</b><span class="intro-en">' + g.en + '</span></div><p>' + g.desc + '</p>' +
+        '<div class="intro-regions">' + REGIONS.filter((x) => x.group === g.id).map((x) =>
+          '<button type="button" class="chip" data-region="' + x.id + '"><i style="background:' + x.color + '"></i>' + x.label + '</button>').join('') + '</div>' +
+        '<p class="intro-meta">' + n + '色</p>';
+    }
+    el.hidden = false;
   }
   function buildChips() {
     const mk = (attr, id, label, dot) => '<button type="button" class="chip" data-' + attr + '="' + id + '" aria-pressed="false">' + (dot ? '<i style="background:' + dot + '"></i>' : '') + label + '<em></em></button>';
@@ -184,9 +255,9 @@
   function refreshControls() {
     const base = ALL;
     const count = (skip, pred) => { let n = 0; for (let i = 0; i < base.length; i++) { if (matches(base[i], skip) && pred(base[i])) n++; } return n; };
-    $$('.region').forEach((b) => {
+    $$('[data-region]', $('#regions')).forEach((b) => {
       const id = b.dataset.region; b.setAttribute('aria-pressed', String(state.region === id));
-      $('.rg-count', b).textContent = count('region', (c) => id === 'all' || c.region === id) + ' 色';
+      $('.rg-count', b).textContent = count('region', (c) => id === 'all' || c.region === id || c.group === id) + ' 色';
     });
     $$('#family-chips .chip').forEach((b) => {
       const id = b.dataset.family; const n = count('family', (c) => id === 'all' || c.family === id);
@@ -218,23 +289,41 @@
 
     const filtered = state.region !== 'all' || state.family !== 'all' || state.tag !== 'all' || !!state.q;
     const parts = [];
-    if (state.region !== 'all') parts.push(RBY[state.region].label);
+    if (state.region !== 'all') parts.push(regionLabel(state.region));
     if (state.family !== 'all') parts.push(FBY[state.family].label);
     if (state.tag !== 'all') parts.push(TBY[state.tag].label);
     if (state.q) parts.push('「' + esc(state.q) + '」');
     $('#count').innerHTML = (parts.length ? parts.join(' · ') + ' — ' : '') + '<b>' + visible.length + '</b> 色' + (state.sort !== 'order' ? '（' + SORT_LABEL[state.sort] + '）' : '');
     $('#reset').hidden = !filtered;
+    renderIntro();
 
     const grid = $('#grid'), mapWrap = $('#map-wrap'), empty = $('#empty');
     empty.hidden = visible.length > 0;
+    shown = PAGE;
     if (state.view === 'map') {
       grid.hidden = true; mapWrap.hidden = visible.length === 0; if (visible.length) drawMap();
+      $('#more-wrap').hidden = true;
     } else {
       mapWrap.hidden = true; grid.hidden = visible.length === 0;
       grid.classList.toggle('list', state.view === 'list');
-      grid.innerHTML = visible.map(cardHTML).join('');
+      grid.innerHTML = visible.slice(0, shown).map(cardHTML).join('');
+      syncMore();
     }
     writeHash();
+  }
+  // 一覧は PAGE 枚ずつ描画する(1000枚超を一度に出すと、起動やダイアログの表示が重くなるため)。続きは、末尾が近づくと自動で足す。
+  const PAGE = 120;
+  let shown = PAGE;
+  function syncMore() {
+    const rest = visible.length - Math.min(shown, visible.length);
+    $('#more-wrap').hidden = rest <= 0 || state.view === 'map';
+    $('#more-n').textContent = rest;
+  }
+  function loadMore() {
+    if (state.view === 'map' || shown >= visible.length) return;
+    const from = shown; shown += PAGE;
+    $('#grid').insertAdjacentHTML('beforeend', visible.slice(from, shown).map(cardHTML).join(''));
+    syncMore();
   }
   function setState(patch) { Object.assign(state, patch); update(); }
   function resetAll() { Object.assign(state, DEFAULTS); update(); }
@@ -269,7 +358,10 @@
     });
     g.textAlign = 'center'; g.fillText('無彩色', x0 + neutralW / 2, y1 + 27);
 
-    const byRegion = state.region === 'all';
+    // 複数の地域を表示しているときは、輪郭の色で地域を示し、下に凡例を出す
+    const inView = REGIONS.filter((r) => visible.some((c) => c.region === r.id));
+    const byRegion = inView.length > 1;
+    $('#map-legend').innerHTML = byRegion ? inView.map((r) => '<li><i style="--rc:' + r.color + '"></i>' + r.label + '</li>').join('') : '';
     mapPts = visible.map((c) => {
       let x;
       const j = ((c.order * 2654435761) % 1000) / 1000;
@@ -406,10 +498,13 @@
     const cmyk = CU.rgbToCmyk(R, G, B), cw = CU.contrast(c.rgb, [255, 255, 255]), cb = CU.contrast(c.rgb, [0, 0, 0]);
     const grade = (v) => (v >= 7 ? 'AAA' : v >= 4.5 ? 'AA' : v >= 3 ? 'AA(大きな文字のみ)' : '基準未満');
     const code = (k, v) => '<div class="code"><b>' + k + '</b><code>' + esc(v) + '</code><button type="button" class="copy" data-copy="' + esc(v) + '">コピー</button></div>';
-    const cross = REGIONS.filter((x) => x.id !== c.region).map((x) => nearestBy(c.lab, (k) => k.region === x.id, 1, c.id)[0])
-      .sort((a, b) => a.d - b.d)
-      .map((m) => { const q = closeness(m.d); return miniHTML(m.c, q[0], q[1]); }).join('');
-    const same = nearestBy(c.lab, (k) => k.region === c.region, 4, c.id).map((m) => miniHTML(m.c, '')).join('');
+    const rank = rankAll(c.lab, c.id);
+    const crossAll = bestPerRegion(rank, c.region, 1);
+    const crossHTML = (m) => { const q = closeness(m.d); return miniHTML(m.c, q[0], q[1]); };
+    const TOP = 6;
+    const cross = '<div class="list-mini">' + crossAll.slice(0, TOP).map(crossHTML).join('') + '</div>' +
+      (crossAll.length > TOP ? '<details class="more"><summary>ほかの ' + (crossAll.length - TOP) + ' 地域も見る</summary><div class="list-mini">' + crossAll.slice(TOP).map(crossHTML).join('') + '</div></details>' : '');
+    const same = rank.filter((m) => m.c.region === c.region).slice(0, 4).map((m) => miniHTML(m.c, '')).join('');
     let sug;
     if (c.family === 'mono') sug = '<p class="hint">無彩色に近い色のため、色相をもとにした配色の提案は表示しません。</p>';
     else sug = '<div class="list-mini">' + suggestions(c).map((s) => miniHTML(s.match.c, s.label)).join('') + '</div>';
@@ -437,7 +532,7 @@
       '<div class="ct w" style="--c:' + c.hex + '"><strong>Aa あ</strong><span>白文字 ' + cw.toFixed(1) + ':1 · ' + grade(cw) + '</span></div>' +
       '<div class="ct k" style="--c:' + c.hex + '"><strong>Aa あ</strong><span>黒文字 ' + cb.toFixed(1) + ':1 · ' + grade(cb) + '</span></div></div></div>' +
       '</div><div>' +
-      '<div class="sec"><h3>他の文化では？ <small>最も近い色</small></h3><div class="list-mini">' + cross + '</div>' +
+      '<div class="sec"><h3>他の文化では？ <small>最も近い色</small></h3>' + cross +
       '<div class="d-actions"><button type="button" class="btn" data-finder="' + c.hex + '">この色で近い色を探す</button></div></div>' +
       '<div class="sec"><h3>配色の提案 <small>色相を回して、近い伝統色を当てた結果</small></h3>' + sug + '</div>' +
       '<div class="sec"><h3>同じ地域で近い色</h3><div class="list-mini">' + same + '</div></div>' +
@@ -483,12 +578,14 @@
   }
   function renderFinder() {
     const rgb = CU.hexToRgb(finderHex), lab = CU.rgbToLab(rgb[0], rgb[1], rgb[2]), tx = CU.readableText(rgb);
-    const best = nearestBy(lab, null, 1)[0], br = RBY[best.c.region], q = closeness(best.d);
-    const cols = REGIONS.map((r) => '<div class="f-col"><h3><span class="dot" style="--rc:' + r.color + '"></span>' + r.label + '</h3><div class="list-mini">' +
-      nearestBy(lab, (c) => c.region === r.id, 3).map((m) => { const k = closeness(m.d); return miniHTML(m.c, k[0], k[1]); }).join('') + '</div></div>').join('');
+    const rank = rankAll(lab), best = rank[0], br = RBY[best.c.region], q = closeness(best.d);
+    const col = (r) => '<div class="f-col"><h3><span class="dot" style="--rc:' + r.color + '"></span>' + r.label + '</h3><div class="list-mini">' +
+      rank.filter((m) => m.c.region === r.id).slice(0, 2).map((m) => { const k = closeness(m.d); return miniHTML(m.c, k[0], k[1]); }).join('') + '</div></div>';
+    const cols = GROUPS.map((g) => '<section class="f-group"><h3 class="f-gh">' + g.label + '</h3><div class="f-cols">' +
+      REGIONS.filter((r) => r.group === g.id).map(col).join('') + '</div></section>').join('');
     $('#f-results').innerHTML =
       '<div class="f-best"><div class="f-pair"><div style="background:' + finderHex + ';color:' + tx + '">あなたの色<br>' + finderHex + '</div><div style="background:' + best.c.hex + ';color:' + best.c.text + '">最も近い色<br>' + best.c.hex + '</div></div>' +
-      '<div class="f-meta"><span class="hint">五つの文化の中で最も近いのは</span><b ' + nameAttrs(best.c) + '>' + esc(best.c.name) + '</b>' +
+      '<div class="f-meta"><span class="hint">' + REGIONS.length + 'の文化の中で最も近いのは</span><b ' + nameAttrs(best.c) + '>' + esc(best.c.name) + '</b>' +
       '<span>' + br.label + ' · ' + esc(best.c.roman) + ' · ' + q[0] + '（ΔE ' + best.d.toFixed(1) + '）</span>' +
       '<div class="d-actions"><button type="button" class="btn primary" data-open="' + best.c.id + '">詳細を見る</button></div></div></div>' +
       '<div class="f-cols">' + cols + '</div>';
@@ -541,6 +638,7 @@
       const o = e.target.closest('[data-open]'); if (o) openDetail(o.dataset.open);
     });
     $('#regions').addEventListener('click', (e) => { const b = e.target.closest('[data-region]'); if (b) setState({ region: b.dataset.region }); });
+    $('#rg-intro').addEventListener('click', (e) => { const b = e.target.closest('[data-region]'); if (b) setState({ region: b.dataset.region }); });
     $('#family-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-family]'); if (b) setState({ family: state.family === b.dataset.family ? 'all' : b.dataset.family }); });
     $('#tag-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-tag]'); if (b) setState({ tag: state.tag === b.dataset.tag ? 'all' : b.dataset.tag }); });
     $('#view-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) setState({ view: b.dataset.view }); });
@@ -548,6 +646,11 @@
     let qt; $('#q').addEventListener('input', (e) => { clearTimeout(qt); const v = e.target.value; qt = setTimeout(() => setState({ q: v.trim() }), 120); });
     $('#reset').addEventListener('click', resetAll);
     $('#empty-reset').addEventListener('click', resetAll);
+    $('#more').addEventListener('click', loadMore);
+    if ('IntersectionObserver' in window) {
+      // 「さらに表示」の位置が画面の近くに来たら、続きを足す(ボタンは、使えない環境と読み上げ用に残す)
+      new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) loadMore(); }, { rootMargin: '900px 0px' }).observe($('#more-wrap'));
+    }
     document.addEventListener('keydown', (e) => {
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) && !$$('dialog').some((d) => d.open)) { e.preventDefault(); $('#q').focus(); }
     });
@@ -566,13 +669,15 @@
   /* ───────── 起動 ───────── */
   function init() {
     $('#total').textContent = ALL.length;
+    $('#n-regions').textContent = REGIONS.length;
+    $('#f-lead').textContent = '好きな色を選ぶと、' + REGIONS.length + 'の文化それぞれで最も近い伝統色を表示します。';
     readHash();
     buildRegions(); buildChips();
     initList(); initMap(); initDetail(); initFinder(); initPalette(); initDialogs(); initTheme();
     saveFavs();
     update();
     if (selectedId) { const id = selectedId; selectedId = null; openDetail(id); }
-    window.__sekai = { count: ALL.length, state, byId, mapPts: () => mapPts }; // 検証用フック
+    window.__sekai = { count: ALL.length, state, byId, mapPts: () => mapPts, visibleCount: () => visible.length, rendered: () => $$('#grid > li').length }; // 検証用フック
   }
   init();
 })();
