@@ -124,7 +124,14 @@
   <div id="panel-tryon" role="tabpanel" aria-labelledby="tab-tryon" hidden>
     <div class="ty-tpls" id="ty-tpls" role="group" aria-label="テンプレート"></div>
     <div class="ty-main">
-      <figure class="ty-stage" id="ty-stage" aria-label="着せ替えのプレビュー"></figure>
+      <figure class="ty-stage" id="ty-stage" aria-label="着せ替えのプレビュー">
+        <div class="ty-fig" id="ty-fig"></div>
+        <figcaption id="ty-cap"></figcaption>
+        <div class="ty-quick" role="group" aria-label="配色の割り当てを変える">
+          <button type="button" class="btn" id="ty-shift">色をずらす</button>
+          <button type="button" class="btn" id="ty-shuffle">シャッフル</button>
+        </div>
+      </figure>
       <aside class="ty-side">
         <section class="ty-box">
           <h3>配色を選ぶ</h3>
@@ -153,8 +160,6 @@
           <h3>パーツ <small>図か、一覧のパーツを選び、上の色を押すと塗れます</small></h3>
           <ul class="ty-slots" id="ty-slots"></ul>
           <div class="ty-btns">
-            <button type="button" class="btn" id="ty-shift">色をずらす</button>
-            <button type="button" class="btn" id="ty-shuffle">シャッフル</button>
             <button type="button" class="btn" id="ty-plain">プレーンに戻す</button>
             <button type="button" class="btn" id="ty-copy">HEXをコピー</button>
             <button type="button" class="btn" id="ty-png">画像で保存</button>

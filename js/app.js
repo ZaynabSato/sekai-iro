@@ -527,8 +527,9 @@
     $('#ty-slots').innerHTML = tpl.slots.map((s) => '<li><button type="button" class="ty-slot" data-slot="' + s.id + '" aria-pressed="' + (ty.sel === s.id) + '"><i style="background:' + (cols[s.id] || TRY.PLAIN) + '"></i><span>' + s.label + '</span><small>' + (cols[s.id] || '—') + '</small></button></li>').join('');
     $('#ty-plain').textContent = ty.plain ? '色を戻す' : 'プレーンに戻す';
     // 図
-    $('#ty-stage').innerHTML = TRY.svg(tpl, ty.plain ? {} : cols, { label: tpl.cat + '(' + tpl.label + ')に配色を当てたプレビュー' }) +
-      '<figcaption>' + (ty.plain ? 'プレーンなテンプレート' : (cur ? '<span class="dot" style="--rc:' + RBY[cur.region].color + '"></span>' + RBY[cur.region].label + ' · ' + esc(cur.name) : '自分で作った配色') + '(' + ty.pal.length + '色)') + '</figcaption>';
+    $('#ty-stage').dataset.tpl = ty.tpl;
+    $('#ty-fig').innerHTML = TRY.svg(tpl, ty.plain ? {} : cols, { label: tpl.cat + '(' + tpl.label + ')に配色を当てたプレビュー' });
+    $('#ty-cap').innerHTML = ty.plain ? 'プレーンなテンプレート' : (cur ? '<span class="dot" style="--rc:' + RBY[cur.region].color + '"></span>' + RBY[cur.region].label + ' · ' + esc(cur.name) : '自分で作った配色') + '(' + ty.pal.length + '色)';
     if (ty.sel) { const g = $('#ty-stage [data-slot="' + ty.sel + '"]'); if (g) g.classList.add('sel'); }
     // 文化を見比べる
     const single = !!RBY[state.region];
@@ -630,6 +631,9 @@
   }
   function initTryon() {
     if (!CONFIG.fileSave) $('#ty-png').hidden = true;
+    // スマホではプレビューを画面上部に固定する。固定ヘッダーの高さの直下に置くため、高さをCSS変数に入れておく
+    const topBar = $('.top'), syncTopH = () => { if (topBar) document.documentElement.style.setProperty('--top-h', topBar.offsetHeight + 'px'); };
+    syncTopH(); window.addEventListener('resize', syncTopH);
     $('#ty-tpls').addEventListener('click', (e) => { const b = e.target.closest('[data-tpl]'); if (b) { ty.tpl = b.dataset.tpl; tyRefresh(); } });
     $('#ty-scheme').addEventListener('change', (e) => { const s = SBY[e.target.value]; if (s) { tyLoadScheme(s); tyRefresh(); } });
     $('#ty-fav').addEventListener('click', () => {
