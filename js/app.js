@@ -93,8 +93,34 @@
     });
   });
 
+  /* ───────── 配色例 ───────── */
+  const SCHEMES = [];
+  const WARM = { red: 1, orange: 1, yellow: 1, pink: 1, brown: 1 };
+  (function () {
+    const idx = {};
+    ALL.forEach((c) => { (idx[c.region] = idx[c.region] || {})[CU.nameKey(c.name)] = c; });
+    const per = {};
+    (window.SEKAI_SCHEMES || []).forEach((s) => {
+      if (!RBY[s.r]) return;
+      const parts = s.c.map((p) => ({ c: (idx[s.r] || {})[CU.nameKey(p[0])], w: p[1] })).filter((p) => p.c);
+      if (parts.length < 2) return;
+      per[s.r] = (per[s.r] || 0) + 1;
+      const tw = parts.reduce((a, p) => a + p.w, 0);
+      let warm = 0, cool = 0;
+      parts.forEach((p) => { if (p.c.family === 'mono') return; if (WARM[p.c.family]) warm += p.w; else cool += p.w; });
+      const Ls = parts.map((p) => p.c.lab[0]);
+      SCHEMES.push({
+        id: s.r + '-s' + per[s.r], region: s.r, group: RBY[s.r].group, name: s.name, kind: s.k, note: s.note, parts, n: parts.length,
+        stat: { chroma: parts.reduce((a, p) => a + p.w * p.c.chroma, 0) / tw, lrange: Math.max.apply(null, Ls) - Math.min.apply(null, Ls), warm: warm + cool ? warm / (warm + cool) : 0.5 }
+      });
+    });
+  })();
+  const SBY = Object.fromEntries(SCHEMES.map((s) => [s.id, s]));
+  const inScope = (s, region) => region === 'all' || s.region === region || s.group === region;
+
   /* ───────── 状態 ───────── */
-  const DEFAULTS = { region: 'all', family: 'all', tag: 'all', q: '', sort: 'order', view: 'grid' };
+  // page: 表示するタブ(colors=色を引く / schemes=配色例 / tryon=着せ替え)  sn: 配色例の色数での絞り込み
+  const DEFAULTS = { region: 'all', family: 'all', tag: 'all', q: '', sort: 'order', view: 'grid', page: 'colors', sn: 'all' };
   const state = Object.assign({}, DEFAULTS);
   let tokens = [];
   let visible = [];
@@ -196,6 +222,12 @@
     if (state.q) p.push('q=' + encodeURIComponent(state.q));
     if (state.sort !== 'order') p.push('s=' + state.sort);
     if (state.view !== 'grid') p.push('v=' + state.view);
+    if (state.page !== 'colors') p.push('p=' + state.page);
+    if (state.sn !== 'all' && state.page === 'schemes') p.push('n=' + state.sn);
+    if (state.page === 'tryon') {
+      p.push('tp=' + ty.tpl);
+      if (ty.srcId) p.push('ps=' + ty.srcId); else if (ty.pal.length) p.push('pc=' + ty.pal.map((x) => x.hex.slice(1)).join(','));
+    }
     if (selectedId) p.push('c=' + selectedId);
     const h = p.length ? '#' + p.join('&') : '';
     if (location.hash !== h) { try { history.replaceState(null, '', location.pathname + location.search + h); } catch (e) { /* file:// 等では無視 */ } }
@@ -212,6 +244,14 @@
       else if (k === 'q') state.q = v.slice(0, 80);
       else if (k === 's' && SORTS[v]) state.sort = v;
       else if (k === 'v' && (v === 'grid' || v === 'list' || v === 'map')) state.view = v;
+      else if (k === 'p' && (v === 'schemes' || v === 'tryon')) state.page = v;
+      else if (k === 'n' && /^[2-5]$/.test(v)) state.sn = v;
+      else if (k === 'tp' && TPL[v]) ty.tpl = v;
+      else if (k === 'ps' && SBY[v]) tyLoadScheme(SBY[v], true);
+      else if (k === 'pc') {
+        const hs = v.split(',').map((h) => '#' + h.toUpperCase()).filter((h) => /^#[0-9A-F]{6}$/.test(h)).slice(0, 8);
+        if (hs.length >= 2) { ty.pal = hs.map((h, i) => ({ hex: h, w: hs.length - i })); ty.srcId = ''; }
+      }
       else if (k === 'c' && byId[v]) selectedId = v;
     });
   }
@@ -238,7 +278,9 @@
     el.style.setProperty('--rc', r ? r.color : '#6b5f52');
     if (r) {
       el.innerHTML = '<div class="intro-head"><span class="dot" style="--rc:' + r.color + '"></span><b>' + r.label + '</b><span class="intro-en">' + r.en + '</span><span class="intro-sense">' + r.sense + '</span></div>' +
-        '<p>' + r.desc + '</p><p class="intro-meta">' + n + '色 · 名前の表記: ' + r.script + '</p>';
+        '<p>' + r.desc + '</p>' +
+        (state.page !== 'colors' && SCHEME_SENSE[r.id] ? '<p class="intro-scheme"><b>配色の感性</b>' + SCHEME_SENSE[r.id] + '</p>' : '') +
+        '<p class="intro-meta">' + n + '色 · ' + SCHEMES.filter((s) => s.region === id).length + '配色 · 名前の表記: ' + r.script + '</p>';
     } else {
       el.innerHTML = '<div class="intro-head"><b>' + g.label + '</b><span class="intro-en">' + g.en + '</span></div><p>' + g.desc + '</p>' +
         '<div class="intro-regions">' + REGIONS.filter((x) => x.group === g.id).map((x) =>
@@ -257,7 +299,9 @@
     const count = (skip, pred) => { let n = 0; for (let i = 0; i < base.length; i++) { if (matches(base[i], skip) && pred(base[i])) n++; } return n; };
     $$('[data-region]', $('#regions')).forEach((b) => {
       const id = b.dataset.region; b.setAttribute('aria-pressed', String(state.region === id));
-      $('.rg-count', b).textContent = count('region', (c) => id === 'all' || c.region === id || c.group === id) + ' 色';
+      $('.rg-count', b).textContent = state.page === 'colors'
+        ? count('region', (c) => id === 'all' || c.region === id || c.group === id) + ' 色'
+        : SCHEMES.filter((s) => inScope(s, id)).length + ' 配色';
     });
     $$('#family-chips .chip').forEach((b) => {
       const id = b.dataset.family; const n = count('family', (c) => id === 'all' || c.family === id);
@@ -285,8 +329,20 @@
   function update() {
     tokens = state.q.split(/\s+/).map(CU.normalize).filter(Boolean);
     visible = ALL.filter((c) => matches(c)).sort(SORTS[state.sort]);
+    refreshTabs();
     refreshControls();
-
+    renderIntro();
+    if (state.page === 'colors') renderColors();
+    else if (state.page === 'schemes') renderSchemes();
+    else renderTryon();
+    writeHash();
+  }
+  function refreshTabs() {
+    $$('#tabs .tab').forEach((b) => { const on = b.dataset.page === state.page; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    ['colors', 'schemes', 'tryon'].forEach((p) => { $('#panel-' + p).hidden = state.page !== p; });
+    $('#regions').classList.toggle('compact', state.page !== 'colors'); // 配色例・着せ替えでは、地域の選択を小さくして、中身を上に出す
+  }
+  function renderColors() {
     const filtered = state.region !== 'all' || state.family !== 'all' || state.tag !== 'all' || !!state.q;
     const parts = [];
     if (state.region !== 'all') parts.push(regionLabel(state.region));
@@ -295,7 +351,6 @@
     if (state.q) parts.push('「' + esc(state.q) + '」');
     $('#count').innerHTML = (parts.length ? parts.join(' · ') + ' — ' : '') + '<b>' + visible.length + '</b> 色' + (state.sort !== 'order' ? '（' + SORT_LABEL[state.sort] + '）' : '');
     $('#reset').hidden = !filtered;
-    renderIntro();
 
     const grid = $('#grid'), mapWrap = $('#map-wrap'), empty = $('#empty');
     empty.hidden = visible.length > 0;
@@ -309,7 +364,6 @@
       grid.innerHTML = visible.slice(0, shown).map(cardHTML).join('');
       syncMore();
     }
-    writeHash();
   }
   // 一覧は PAGE 枚ずつ描画する(1000枚超を一度に出すと、起動やダイアログの表示が重くなるため)。続きは、末尾が近づくと自動で足す。
   const PAGE = 120;
@@ -325,8 +379,243 @@
     $('#grid').insertAdjacentHTML('beforeend', visible.slice(from, shown).map(cardHTML).join(''));
     syncMore();
   }
-  function setState(patch) { Object.assign(state, patch); update(); }
-  function resetAll() { Object.assign(state, DEFAULTS); update(); }
+  function setState(patch) {
+    const regionChanged = patch.region !== undefined && patch.region !== state.region;
+    Object.assign(state, patch);
+    // 着せ替えで地域を切り替えたら、その地域の配色に切り替える
+    if (state.page === 'tryon' && regionChanged) { const cur = SBY[ty.srcId]; if (!cur || !inScope(cur, state.region)) { const f = SCHEMES.find((s) => inScope(s, state.region)); if (f) tyLoadScheme(f); } }
+    update();
+  }
+  function resetAll() { Object.assign(state, DEFAULTS, { page: state.page }); update(); }
+
+  /* ───────── 配色例タブ ───────── */
+  const SCHEME_SENSE = {
+    jp: '低彩度の微差と、白の余白。同じ系統の濃淡を重ねる。',
+    eu: '顔料や紋章に由来する、明暗のはっきりした対比。',
+    cn: '五行の正色を軸にした、赤・金・青の格調ある対比。',
+    in: '高彩度の多色を、金と合わせて華やかに重ねる。',
+    ir: '深い青(トルコ石とラピスラズリ)を主役に、金と赤を差す。',
+    naf: '白い壁に青、砂漠の橙。暖色と寒色がはっきり分かれる。',
+    waf: '布が主役。金・赤・緑・黒、または藍と白の力強い対比。',
+    eaf: '赤を主役に、青と白で締める。色の意味で並べる。',
+    saf: '黒い縁取りで、原色を面として並べる。',
+    mes: '強い色同士をぶつける、祝祭の配色。',
+    and: '染めない毛色の低彩度と、染めの赤・黄・青の鮮烈さ。',
+    nam: '大地の色を基調に、トルコ石の青と赤を差す。四方位の四色。',
+    tro: '果実の暖色と、森や水の緑・黒。熱を帯びた配色。'
+  };
+  function schemeHTML(s) {
+    const r = RBY[s.region];
+    const label = s.name + 'の配色: ' + s.parts.map((p) => p.c.name + ' ' + p.c.hex).join('、');
+    return '<li class="scheme" style="--rc:' + r.color + '">' +
+      '<div class="sc-strip" role="img" aria-label="' + esc(label) + '">' + s.parts.map((p) => '<i style="flex:' + p.w + ';background:' + p.c.hex + '"></i>').join('') + '</div>' +
+      '<div class="sc-body"><div class="sc-meta"><span class="dot" style="--rc:' + r.color + '"></span>' + r.label + '<span class="sc-n">' + s.n + '色</span><span class="sc-kind">' + esc(s.kind) + '</span></div>' +
+      '<h3 class="sc-name">' + esc(s.name) + '</h3><p class="sc-note">' + esc(s.note) + '</p>' +
+      '<ul class="sc-colors">' + s.parts.map((p) => '<li><button type="button" class="sc-chip" data-open="' + p.c.id + '" style="--c:' + p.c.hex + '"><i></i><span ' + nameAttrs(p.c) + '>' + esc(p.c.name) + '</span><small>' + p.c.hex + '</small></button></li>').join('') + '</ul>' +
+      '<div class="sc-actions"><button type="button" class="btn primary" data-try="' + s.id + '">着せ替えで試す</button><button type="button" class="btn" data-addpal="' + s.id + '">マイパレットに足す</button></div></div></li>';
+  }
+  function renderSchemes() {
+    const scoped = SCHEMES.filter((s) => inScope(s, state.region));
+    const bucket = (s) => Math.min(s.n, 5);
+    const list = scoped.filter((s) => state.sn === 'all' || bucket(s) === +state.sn);
+    $('#sc-chips').innerHTML = [['all', 'すべて'], ['2', '2色'], ['3', '3色'], ['4', '4色'], ['5', '5色以上']].map((o) => {
+      const n = o[0] === 'all' ? scoped.length : scoped.filter((s) => bucket(s) === +o[0]).length;
+      return '<button type="button" class="chip" data-sn="' + o[0] + '" aria-pressed="' + (state.sn === o[0]) + '" data-zero="' + (n === 0) + '">' + o[1] + '<em>' + n + '</em></button>';
+    }).join('');
+    const parts = []; if (state.region !== 'all') parts.push(regionLabel(state.region)); if (state.sn !== 'all') parts.push(state.sn === '5' ? '5色以上' : state.sn + '色');
+    $('#sc-count').innerHTML = (parts.length ? parts.join(' · ') + ' — ' : '') + '<b>' + list.length + '</b> 配色';
+    $('#sc-list').innerHTML = list.map(schemeHTML).join('');
+    $('#sc-empty').hidden = list.length > 0;
+    renderCompare(scoped);
+  }
+  // 掲載した配色例の平均から、文化ごとの配色の傾向を並べる(優劣ではなく、違いを見るための目安)
+  function renderCompare(scoped) {
+    const el = $('#sc-compare');
+    const regs = REGIONS.filter((r) => scoped.some((s) => s.region === r.id));
+    if (regs.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+    const avg = (arr, f) => arr.reduce((a, s) => a + f(s), 0) / arr.length;
+    const row = (r) => {
+      const ss = scoped.filter((s) => s.region === r.id);
+      const v = { c: avg(ss, (s) => s.stat.chroma), l: avg(ss, (s) => s.stat.lrange), w: avg(ss, (s) => s.stat.warm), n: avg(ss, (s) => s.n) };
+      const bar = (pct, txt) => '<span class="cmp-bar"><i style="width:' + Math.max(3, Math.min(100, pct)) + '%"></i></span><em>' + txt + '</em>';
+      return '<button type="button" class="cmp-row" data-region="' + r.id + '" style="--rc:' + r.color + '"><span class="cmp-name"><span class="dot" style="--rc:' + r.color + '"></span>' + r.label + '</span>' +
+        '<span class="cmp-cell">' + bar(v.c / 70 * 100, Math.round(v.c)) + '</span><span class="cmp-cell">' + bar(v.l, Math.round(v.l)) + '</span>' +
+        '<span class="cmp-cell">' + bar(v.w * 100, Math.round(v.w * 100) + '%') + '</span><span class="cmp-n">' + v.n.toFixed(1) + '色</span></button>';
+    };
+    el.innerHTML = '<h3>文化ごとの配色の傾向</h3><p class="hint">掲載した配色例の平均です。文化の優劣ではなく、配色の感性の違いを見るための目安です(押すと、その地域に絞り込みます)。</p>' +
+      '<div class="cmp-head"><span></span><span>鮮やかさ</span><span>明暗の差</span><span>暖色の割合</span><span>平均色数</span></div>' + regs.map(row).join('');
+    el.hidden = false;
+  }
+  function initSchemes() {
+    $('#sc-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-sn]'); if (b) setState({ sn: state.sn === b.dataset.sn ? 'all' : b.dataset.sn }); });
+    $('#sc-compare').addEventListener('click', (e) => { const b = e.target.closest('[data-region]'); if (b) setState({ region: b.dataset.region }); });
+    $('#sc-list').addEventListener('click', (e) => {
+      const o = e.target.closest('[data-open]'); if (o) { openDetail(o.dataset.open); return; }
+      const t = e.target.closest('[data-try]');
+      if (t) { tyLoadScheme(SBY[t.dataset.try]); state.page = 'tryon'; update(); const tb = $('#tabs'); window.scrollTo({ top: Math.max(0, tb.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' }); return; }
+      const a = e.target.closest('[data-addpal]');
+      if (a) {
+        const s = SBY[a.dataset.addpal]; let n = 0;
+        s.parts.forEach((p) => { if (!isFav(p.c.id)) { favList.push(p.c.id); n++; $$('[data-fav="' + p.c.id + '"]').forEach((b) => b.setAttribute('aria-pressed', 'true')); } });
+        saveFavs(); toast(n ? '「' + s.name + '」の ' + n + ' 色をマイパレットに足しました' : 'すべてマイパレットに入っています');
+      }
+    });
+  }
+
+  /* ───────── 着せ替えタブ ───────── */
+  const TRY = window.SEKAI_TRYON || { templates: [], svg: () => '', PLAIN: '#e9e5de' };
+  const TPL = Object.fromEntries(TRY.templates.map((t) => [t.id, t]));
+  const ty = { tpl: TRY.templates.length ? TRY.templates[0].id : '', pal: [], srcId: '', shift: 0, perm: null, over: {}, sel: null, brush: null, plain: false, cycle: 0 };
+  const TY_ICON = {
+    outfit: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M8.5 3.5 3 6.5l2 4 2-1V20h10V9.5l2 1 2-4-5.5-3a3.5 3.5 0 0 1-7 0z"/></svg>',
+    room: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 14a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4H3zM6 18v2M18 18v2"/></svg>',
+    goods: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" d="M4 8h11v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM15 10h2a2.5 2.5 0 0 1 0 5h-2M7 4v1.5M10 3.5V5M13 4v1.5"/></svg>'
+  };
+  const labL = (hex) => { const r = CU.hexToRgb(hex); return CU.rgbToLab(r[0], r[1], r[2])[0]; };
+  function tyLoadScheme(s) {
+    ty.pal = s.parts.map((p) => ({ hex: p.c.hex, w: p.w, name: p.c.name, id: p.c.id }));
+    ty.srcId = s.id; ty.shift = 0; ty.perm = null; ty.over = {}; ty.plain = false; ty.brush = null;
+  }
+  function tyCustom(pal) { ty.pal = pal; ty.srcId = ''; ty.shift = 0; ty.perm = null; ty.over = {}; ty.plain = false; ty.brush = null; }
+  // 配色の色を、テンプレートのパーツへ割り当てる。大きい面(壁・床・背景)は比率の大きい色・明るい色、小さい面は差し色。
+  function tyAssign(tpl, pal, shift, perm) {
+    const out = {}, n = pal.length; if (!n) return out;
+    let arr = pal.slice().sort((a, b) => b.w - a.w);
+    if (perm && perm.length === n) arr = perm.map((i) => arr[i]);
+    const Ls = arr.map((p) => labL(p.hex));
+    const byL = arr.map((p, i) => i).sort((a, b) => Ls[b] - Ls[a]);
+    const cand = (pref) => {
+      if (pref === 'light') return byL.map((i) => arr[i].hex);
+      if (pref === 'dark') return byL.slice().reverse().map((i) => arr[i].hex);
+      const r = []; for (let t = 0; t < n; t++) r.push(arr[(pref + shift + t) % n].hex); return r;
+    };
+    const BG = { bg: 1, wall: 1, desk: 1 };
+    let bgHex = null;
+    tpl.slots.forEach((s) => { if (BG[s.id]) { bgHex = cand(s.pref)[0]; out[s.id] = bgHex; } });
+    // 隣り合うパーツ(vs)や背景と同じ色にならないよう、可能な範囲でずらす
+    tpl.slots.forEach((s) => {
+      if (BG[s.id]) return;
+      const c = cand(s.pref), near = (s.vs || []).map((id) => out[id]).filter(Boolean);
+      const strict = near.concat(n >= 3 ? [bgHex] : []);
+      out[s.id] = c.find((h) => strict.indexOf(h) < 0) || c.find((h) => near.indexOf(h) < 0) || c[0];
+    });
+    return out;
+  }
+  const tyColors = () => (ty.plain ? {} : Object.assign(tyAssign(TPL[ty.tpl], ty.pal, ty.shift, ty.perm), ty.over));
+  function tyRefresh() { renderTryon(); writeHash(); }
+  function tyPaint(slotId, hex) { ty.over[slotId] = hex; ty.plain = false; }
+  function tySelect(slotId) { ty.sel = slotId; if (ty.brush) tyPaint(slotId, ty.brush); tyRefresh(); }
+  function renderTryon() {
+    if (!ty.pal.length) { const f = SCHEMES.find((s) => inScope(s, state.region)) || SCHEMES[0]; if (f) tyLoadScheme(f); }
+    const tpl = TPL[ty.tpl]; if (!tpl) return;
+    if (!tpl.slots.some((s) => s.id === ty.sel)) ty.sel = null;
+    const cols = tyColors();
+    $('#ty-tpls').innerHTML = TRY.templates.map((t) => '<button type="button" class="ty-tpl" data-tpl="' + t.id + '" aria-pressed="' + (t.id === ty.tpl) + '">' + TY_ICON[t.id] + '<span><b>' + t.cat + '</b><small>' + t.label + '</small></span></button>').join('');
+    // 配色例の選択肢(初回だけ作る)
+    const sel = $('#ty-scheme');
+    if (!sel.options.length) {
+      sel.innerHTML = '<option value="">(自分で作った配色)</option>' + GROUPS.map((g) => '<optgroup label="' + g.label + '">' + REGIONS.filter((r) => r.group === g.id).map((r) =>
+        SCHEMES.filter((s) => s.region === r.id).map((s) => '<option value="' + s.id + '">' + esc(r.label + ' · ' + s.name + '(' + s.n + '色)') + '</option>').join('')).join('') + '</optgroup>').join('');
+    }
+    sel.value = ty.srcId || '';
+    // 使う色
+    const cur = ty.srcId && SBY[ty.srcId];
+    $('#ty-pal').innerHTML = ty.pal.map((p, i) => '<div class="ty-chip"><button type="button" class="ty-sw" data-tycol="' + i + '" aria-pressed="' + (ty.brush === p.hex) + '" style="--c:' + p.hex + '" aria-label="' + esc((p.name || p.hex) + ' ' + p.hex + ' を選ぶ') + '"><span></span></button>' +
+      '<span class="ty-ci"><b>' + esc(p.name || p.hex) + '</b><small>' + p.hex + '</small></span>' +
+      (ty.pal.length > 1 ? '<button type="button" class="x" data-tyrm="' + i + '" aria-label="' + esc((p.name || p.hex)) + 'を外す">✕</button>' : '') + '</div>').join('');
+    // パーツ
+    $('#ty-slots').innerHTML = tpl.slots.map((s) => '<li><button type="button" class="ty-slot" data-slot="' + s.id + '" aria-pressed="' + (ty.sel === s.id) + '"><i style="background:' + (cols[s.id] || TRY.PLAIN) + '"></i><span>' + s.label + '</span><small>' + (cols[s.id] || '—') + '</small></button></li>').join('');
+    $('#ty-plain').textContent = ty.plain ? '色を戻す' : 'プレーンに戻す';
+    // 図
+    $('#ty-stage').innerHTML = TRY.svg(tpl, ty.plain ? {} : cols, { label: tpl.cat + '(' + tpl.label + ')に配色を当てたプレビュー' }) +
+      '<figcaption>' + (ty.plain ? 'プレーンなテンプレート' : (cur ? '<span class="dot" style="--rc:' + RBY[cur.region].color + '"></span>' + RBY[cur.region].label + ' · ' + esc(cur.name) : '自分で作った配色') + '(' + ty.pal.length + '色)') + '</figcaption>';
+    if (ty.sel) { const g = $('#ty-stage [data-slot="' + ty.sel + '"]'); if (g) g.classList.add('sel'); }
+    // 文化を見比べる
+    const single = !!RBY[state.region];
+    const scoped = SCHEMES.filter((s) => inScope(s, state.region));
+    const items = single ? scoped : REGIONS.map((r) => { const l = scoped.filter((s) => s.region === r.id); return l.length ? l[ty.cycle % l.length] : null; }).filter(Boolean);
+    $('#ty-cmp-title').textContent = single ? RBY[state.region].label + 'の配色を、同じ形で' : (state.region === 'all' ? REGIONS.length + 'の文化' : regionLabel(state.region)) + 'を、同じ形で見比べる';
+    $('#ty-grid').dataset.tpl = ty.tpl;
+    $('#ty-cycle').hidden = single || items.length === 0;
+    $('#ty-cmp-note').textContent = single ? '押すと、上のプレビューにその配色を当てます。' : '文化ごとに、配色例を一つずつ当てています。押すと、上のプレビューにその配色を当てます。';
+    $('#ty-grid').innerHTML = items.map((s) => {
+      const r = RBY[s.region]; const c = tyAssign(tpl, s.parts.map((p) => ({ hex: p.c.hex, w: p.w })), 0, null);
+      return '<button type="button" class="ty-cell" data-tyscheme="' + s.id + '" aria-pressed="' + (s.id === ty.srcId) + '" aria-label="' + esc(r.label + ' ' + s.name + ' を当てる') + '">' + TRY.svg(tpl, c) +
+        '<span class="ty-cap"><span class="dot" style="--rc:' + r.color + '"></span><b>' + r.label + '</b><small>' + esc(s.name) + '</small></span></button>';
+    }).join('');
+  }
+  function tySvgToPng() {
+    const tpl = TPL[ty.tpl]; const S = 2;
+    let s = TRY.svg(tpl, ty.plain ? {} : tyColors()).replace('<svg ', '<svg width="' + tpl.w * S + '" height="' + tpl.h * S + '" ');
+    const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = tpl.w * S; cv.height = tpl.h * S;
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      cv.toBlob((b) => { if (!b) { toast('画像にできませんでした'); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'sekai-iro-' + tpl.id + '.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('画像にできませんでした'); };
+    img.src = url;
+  }
+  function initTryon() {
+    if (!CONFIG.fileSave) $('#ty-png').hidden = true;
+    $('#ty-tpls').addEventListener('click', (e) => { const b = e.target.closest('[data-tpl]'); if (b) { ty.tpl = b.dataset.tpl; tyRefresh(); } });
+    $('#ty-scheme').addEventListener('change', (e) => { const s = SBY[e.target.value]; if (s) { tyLoadScheme(s); tyRefresh(); } });
+    $('#ty-fav').addEventListener('click', () => {
+      if (!favList.length) { toast('マイパレットが空です。色のカードのハートで、色を集めてください'); return; }
+      const ids = favList.slice(-8); tyCustom(ids.map((id, i) => ({ hex: byId[id].hex, w: ids.length - i, name: byId[id].name, id }))); tyRefresh();
+    });
+    $('#ty-random').addEventListener('click', () => {
+      const scoped = SCHEMES.filter((s) => inScope(s, state.region)); const pool = scoped.length ? scoped : SCHEMES;
+      let s = pool[Math.floor(Math.random() * pool.length)]; if (pool.length > 1 && s.id === ty.srcId) s = pool[(pool.indexOf(s) + 1) % pool.length];
+      tyLoadScheme(s); tyRefresh();
+    });
+    $('#ty-pal').addEventListener('click', (e) => {
+      const rm = e.target.closest('[data-tyrm]');
+      if (rm) { const i = +rm.dataset.tyrm; const hex = ty.pal[i].hex; tyCustom(ty.pal.filter((p, k) => k !== i).map((p) => ({ hex: p.hex, w: p.w, name: p.name, id: p.id }))); if (ty.brush === hex) ty.brush = null; tyRefresh(); return; }
+      const sw = e.target.closest('[data-tycol]'); if (!sw) return;
+      const hex = ty.pal[+sw.dataset.tycol].hex;
+      ty.brush = ty.brush === hex ? null : hex;
+      if (ty.brush && ty.sel) tyPaint(ty.sel, ty.brush);
+      tyRefresh();
+    });
+    const colorIn = $('#ty-color'), hexIn = $('#ty-hex');
+    colorIn.addEventListener('input', () => { hexIn.value = colorIn.value.toUpperCase(); });
+    hexIn.addEventListener('input', () => { const n = normHex(hexIn.value); if (n) colorIn.value = n.toLowerCase(); });
+    $('#ty-addbtn').addEventListener('click', () => {
+      const n = normHex(hexIn.value); if (!n) { toast('HEXは #RRGGBB の形で入力してください'); return; }
+      if (ty.pal.length >= 8) { toast('色は8色までです'); return; }
+      const base = ty.pal.map((p) => ({ hex: p.hex, w: p.w, name: p.name, id: p.id })); const keepOver = ty.over, keepSel = ty.sel;
+      tyCustom(base.concat([{ hex: n, w: 1, name: '', id: '' }])); ty.over = keepOver; ty.sel = keepSel; ty.brush = n; if (ty.sel) tyPaint(ty.sel, n); tyRefresh();
+    });
+    const pick = (id) => { if (id) tySelect(id); };
+    $('#ty-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) pick(b.dataset.slot); });
+    $('#ty-stage').addEventListener('click', (e) => { const g = e.target.closest('[data-slot]'); if (g) pick(g.dataset.slot); });
+    $('#ty-shift').addEventListener('click', () => { ty.shift = (ty.shift + 1) % Math.max(1, ty.pal.length); ty.over = {}; ty.plain = false; tyRefresh(); });
+    $('#ty-shuffle').addEventListener('click', () => {
+      const n = ty.pal.length; const p = [...Array(n).keys()];
+      for (let k = 0; k < 4; k++) { for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = p[i]; p[i] = p[j]; p[j] = t; } if (n < 2 || p.some((v, i) => v !== i)) break; }
+      ty.perm = p; ty.shift = 0; ty.over = {}; ty.plain = false; tyRefresh();
+    });
+    $('#ty-plain').addEventListener('click', () => { ty.plain = !ty.plain; tyRefresh(); });
+    $('#ty-copy').addEventListener('click', () => {
+      const tpl = TPL[ty.tpl], c = tyColors();
+      copyText(tpl.cat + '(' + tpl.label + ')\n' + tpl.slots.map((s) => s.label + ': ' + (c[s.id] || '-')).join('\n'), '配色をコピーしました');
+    });
+    $('#ty-png').addEventListener('click', tySvgToPng);
+    $('#ty-cycle').addEventListener('click', () => { ty.cycle++; tyRefresh(); });
+    $('#ty-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-tyscheme]'); if (b) { tyLoadScheme(SBY[b.dataset.tyscheme]); tyRefresh(); } });
+  }
+  function initTabs() {
+    const tabs = $('#tabs');
+    tabs.addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (b && b.dataset.page !== state.page) setState({ page: b.dataset.page }); });
+    tabs.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const order = ['colors', 'schemes', 'tryon']; const i = order.indexOf(state.page);
+      const next = order[(i + (e.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length];
+      e.preventDefault(); setState({ page: next }); const nb = $('[data-page="' + next + '"]', tabs); if (nb) nb.focus();
+    });
+  }
 
   /* ───────── 分布図 ───────── */
   let mapPts = [], mapHover = null;
@@ -673,11 +962,11 @@
     $('#f-lead').textContent = '好きな色を選ぶと、' + REGIONS.length + 'の文化それぞれで最も近い伝統色を表示します。';
     readHash();
     buildRegions(); buildChips();
-    initList(); initMap(); initDetail(); initFinder(); initPalette(); initDialogs(); initTheme();
+    initList(); initMap(); initDetail(); initFinder(); initPalette(); initDialogs(); initTheme(); initTabs(); initSchemes(); initTryon();
     saveFavs();
     update();
     if (selectedId) { const id = selectedId; selectedId = null; openDetail(id); }
-    window.__sekai = { count: ALL.length, state, byId, mapPts: () => mapPts, visibleCount: () => visible.length, rendered: () => $$('#grid > li').length }; // 検証用フック
+    window.__sekai = { count: ALL.length, state, byId, ty, schemes: SCHEMES, mapPts: () => mapPts, visibleCount: () => visible.length, rendered: () => $$('#grid > li').length, tyColors }; // 検証用フック
   }
   init();
 })();

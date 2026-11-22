@@ -146,6 +146,11 @@
       .replace(/[\s・'’`\-_.,・]/g, '');
   }
 
+  // 色名の照合用: 合成の違い(NFC)、語中の半スペース、アラビア文字とペルシャ文字の「ي/ی」「ك/ک」の違いを吸収する
+  function nameKey(s) {
+    return String(s == null ? '' : s).normalize('NFC').replace(/\u200c/g, '').replace(/\u064a/g, '\u06cc').replace(/\u0643/g, '\u06a9').trim();
+  }
+
   function slug(s) {
     return String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -154,6 +159,6 @@
   return {
     HEX_RE: HEX_RE, hexToRgb: hexToRgb, rgbToHex: rgbToHex, rgbToHsl: rgbToHsl, hslToRgb: hslToRgb,
     rgbToCmyk: rgbToCmyk, rgbToLab: rgbToLab, deltaE: deltaE, luminance: luminance, contrast: contrast,
-    readableText: readableText, classify: classify, normalize: normalize, slug: slug
+    readableText: readableText, classify: classify, normalize: normalize, nameKey: nameKey, slug: slug
   };
 });

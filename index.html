@@ -48,9 +48,17 @@
     <p class="eyebrow">アジア + 欧州 + アフリカ + アメリカ</p>
     <h1>世界の伝統色を、<br class="br-sm">文化をまたいで引く。</h1>
     <p class="lead">日本と欧州に始まり、中国・インド・ペルシャ、アフリカ、南北アメリカへ。<strong id="n-regions">13</strong> の文化、<strong id="total">0</strong> 色の辞典です。色名の由来を読み、ある色が別の文化では何と呼ばれてきたかも探せます。</p>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="表示の切り替え">
+      <button type="button" role="tab" class="tab" id="tab-colors" data-page="colors" aria-selected="true" aria-controls="panel-colors"><b>色を引く</b><small>辞典</small></button>
+      <button type="button" role="tab" class="tab" id="tab-schemes" data-page="schemes" aria-selected="false" aria-controls="panel-schemes"><b>配色例</b><small>文化ごとの配色</small></button>
+      <button type="button" role="tab" class="tab" id="tab-tryon" data-page="tryon" aria-selected="false" aria-controls="panel-tryon"><b>着せ替え</b><small>服・部屋・小物で試す</small></button>
+    </nav>
     <div class="regions" id="regions" role="group" aria-label="地域で絞り込む"></div>
   </section>
 
+  <section id="rg-intro" class="rg-intro" aria-label="選んだ地域の紹介" hidden></section>
+
+  <div id="panel-colors" role="tabpanel" aria-labelledby="tab-colors">
   <section class="controls" aria-label="絞り込みと並び替え">
     <div class="row">
       <label class="search">
@@ -77,8 +85,6 @@
     <div class="chip-row"><span class="chip-label">テーマ</span><div class="chips" id="tag-chips"></div></div>
   </section>
 
-  <section id="rg-intro" class="rg-intro" aria-label="選んだ地域の紹介" hidden></section>
-
   <div class="result-bar">
     <p id="count" aria-live="polite"></p>
     <button type="button" class="link" id="reset" hidden>条件をリセット</button>
@@ -101,6 +107,58 @@
     <button type="button" class="btn" id="empty-reset">条件をリセット</button>
   </div>
   <noscript><p class="empty">この辞典の表示にはJavaScriptが必要です。</p></noscript>
+  </div>
+
+  <!-- 配色例 -->
+  <div id="panel-schemes" role="tabpanel" aria-labelledby="tab-schemes" hidden>
+    <section class="sc-compare" id="sc-compare" aria-label="文化ごとの配色の傾向" hidden></section>
+    <div class="result-bar sc-bar-row">
+      <p id="sc-count" aria-live="polite"></p>
+      <div class="chips" id="sc-chips" role="group" aria-label="色数で絞り込む"></div>
+    </div>
+    <ul class="schemes" id="sc-list"></ul>
+    <div id="sc-empty" class="empty" hidden><p>条件に合う配色が見つかりませんでした。</p></div>
+  </div>
+
+  <!-- 着せ替え -->
+  <div id="panel-tryon" role="tabpanel" aria-labelledby="tab-tryon" hidden>
+    <div class="ty-tpls" id="ty-tpls" role="group" aria-label="テンプレート"></div>
+    <div class="ty-main">
+      <figure class="ty-stage" id="ty-stage" aria-label="着せ替えのプレビュー"></figure>
+      <aside class="ty-side">
+        <section class="ty-box">
+          <h3>配色を選ぶ</h3>
+          <label class="ty-pick"><span>配色例</span><select id="ty-scheme" aria-label="配色例から選ぶ"></select></label>
+          <div class="ty-btns">
+            <button type="button" class="btn" id="ty-fav">マイパレットから</button>
+            <button type="button" class="btn" id="ty-random">ランダム</button>
+          </div>
+          <div class="ty-pal" id="ty-pal" aria-label="使う色"></div>
+          <div class="ty-add">
+            <input type="color" id="ty-color" value="#c73e3a" aria-label="足す色を選ぶ">
+            <input type="text" id="ty-hex" value="#C73E3A" maxlength="7" spellcheck="false" autocomplete="off" aria-label="足す色のHEX">
+            <button type="button" class="btn" id="ty-addbtn">色を足す</button>
+          </div>
+        </section>
+        <section class="ty-box">
+          <h3>パーツ <small>図か、一覧のパーツを選び、上の色を押すと塗れます</small></h3>
+          <ul class="ty-slots" id="ty-slots"></ul>
+          <div class="ty-btns">
+            <button type="button" class="btn" id="ty-shift">色をずらす</button>
+            <button type="button" class="btn" id="ty-shuffle">シャッフル</button>
+            <button type="button" class="btn" id="ty-plain">プレーンに戻す</button>
+            <button type="button" class="btn" id="ty-copy">HEXをコピー</button>
+            <button type="button" class="btn" id="ty-png">画像で保存</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <section class="ty-compare" aria-label="同じ形で文化を見比べる">
+      <div class="ty-cmp-head"><h3 id="ty-cmp-title">同じ形で、文化を見比べる</h3><button type="button" class="btn" id="ty-cycle">別の配色で見比べる</button></div>
+      <p class="hint" id="ty-cmp-note"></p>
+      <div class="ty-grid" id="ty-grid"></div>
+    </section>
+  </div>
 </main>
 
 <footer class="foot">
@@ -161,6 +219,8 @@
 <script src="js/data/and.js"></script>
 <script src="js/data/nam.js"></script>
 <script src="js/data/tro.js"></script>
+<script src="js/data/schemes.js"></script>
+<script src="js/tryon.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

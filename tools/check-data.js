@@ -45,6 +45,39 @@ for (const r of REGIONS) {
 }
 console.log(`  合計: ${total}色`);
 
+console.log('\n== 配色例のチェック ==');
+{
+  const file = path.join(__dirname, '..', 'js', 'data', 'schemes.js');
+  vm.runInContext(fs.readFileSync(file, 'utf8'), sandbox, { filename: file });
+  const schemes = sandbox.window.SEKAI_SCHEMES;
+  if (!Array.isArray(schemes)) err('SEKAI_SCHEMES が配列でない');
+  else {
+    const byRegion = {}, seenName = new Set(), countHist = {};
+    const index = {};
+    for (const r of REGIONS) { index[r] = new Map(); SEKAI[r].forEach((c) => { const k = CU.nameKey(c[0]); index[r].set(k, (index[r].get(k) || 0) + 1); }); }
+    schemes.forEach((s, i) => {
+      const tag = `配色[${i}] ${s && s.r}/${s && s.name}`;
+      if (!REGIONS.includes(s.r)) return err(tag + ': 地域IDが不正');
+      if (!s.name || !s.k || !s.note) err(tag + ': name / k / note のどれかが空');
+      if (seenName.has(s.r + '|' + s.name)) err(tag + ': 同じ地域に同名の配色');
+      seenName.add(s.r + '|' + s.name);
+      if (!Array.isArray(s.c) || s.c.length < 2 || s.c.length > 8) return err(tag + ': 色数は2〜8');
+      const used = new Set();
+      s.c.forEach((p) => {
+        if (!Array.isArray(p) || typeof p[0] !== 'string' || !(Number.isInteger(p[1]) && p[1] >= 1 && p[1] <= 9)) return err(`${tag}: 色の指定が不正 ${JSON.stringify(p)}`);
+        const k = CU.nameKey(p[0]); const n = index[s.r].get(k) || 0;
+        if (n === 0) err(`${tag}: 「${p[0]}」が ${s.r} の色名にない`);
+        else if (n > 1) err(`${tag}: 「${p[0]}」が ${s.r} に複数ある(特定できない)`);
+        if (used.has(k)) err(`${tag}: 「${p[0]}」が重複`); used.add(k);
+      });
+      byRegion[s.r] = (byRegion[s.r] || 0) + 1; countHist[s.c.length] = (countHist[s.c.length] || 0) + 1;
+    });
+    console.log('  配色数: ' + REGIONS.map((r) => `${r} ${byRegion[r] || 0}`).join(' / ') + `  (合計 ${schemes.length})`);
+    console.log('  色数の分布: ' + Object.keys(countHist).sort().map((k) => `${k}色×${countHist[k]}`).join(', '));
+    REGIONS.forEach((r) => { if (!byRegion[r]) err(r + ': 配色例がない'); });
+  }
+}
+
 console.log('\n== 色計算のテスト ==');
 function approx(a, b, eps, label) {
   if (Math.abs(a - b) > eps) err(`${label}: 期待 ${b} / 実際 ${a}`); else console.log(`  ✓ ${label}`);
